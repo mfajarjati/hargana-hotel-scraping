@@ -1,28 +1,103 @@
-# Manual Scrape Orchestrator API
+---
+title: Hargana Hotel Scraping
+emoji: 🏨
+colorFrom: blue
+colorTo: green
+sdk: docker
+pinned: false
+license: mit
+---
 
-API ini **tidak mengubah** file scraper lama (`scraped_prices.py`, `scraped_reviews.py`, dll). Ini service baru yang mengorkestrasi:
+# Hargana Hotel Scraping API
 
-1. User pilih hotel + input rentang tanggal (mulai dari hari ini dan seterusnya)
-2. Jalankan scraping harga aktual (manual scrape) untuk rentang tanggal
-3. (Opsional) jika `includeReviews=true`, jalankan scraping review
-4. Simpan hasil ke Firestore:
-   - `projects/{projectId}` (ringkas + status)
-   - `hotel_prices` (harga aktual platform=`dataset` biar kompatibel dengan UI yang sekarang)
-5. Panggil API prediksi harga dan simpan hasil prediksi ke `projects/{projectId}.predictions`
+Simple API untuk scraping harga hotel dari Google Travel menggunakan Selenium.
 
-> Nearby places + amenities tetap dari database (Firestore) sesuai requirement.
+## Endpoints
 
-## Jalankan lokal (Windows)
+### `GET /`
 
-1. Siapkan Python env (venv/conda) lalu install dependencies dari `requirements.txt`.
-2. Copy `.env.example` ke `.env` dan isi credential Firebase.
-3. Start server via Uvicorn.
+Service info dan daftar endpoints
 
-## Endpoint (ringkas)
+### `GET /health`
 
-- `POST /v1/projects` → buat project baru + simpan metadata (hotelIds, range, flags)
-- `POST /v1/projects/{projectId}/scrape/prices` → scraping harga aktual untuk rentang tanggal
-- `POST /v1/projects/{projectId}/scrape/reviews` → scraping review (opsional)
-- `POST /v1/projects/{projectId}/predict` → panggil API prediksi dan simpan
+Health check
 
-Detail payload/response ada di `docs/MANUAL_SCRAPE_API.md`.
+### `POST /v1/projects`
+
+Scraping harga hotel untuk multiple hotels dan date range
+
+**Request Body:**
+
+```json
+{
+  "hotels": [
+    {
+      "hotelId": "ChIJ...",
+      "hotelName": "PRIME PARK Hotel Bandung"
+    },
+    {
+      "hotelId": "ChIJ...",
+      "hotelName": "Hotel Dafam Rio"
+    }
+  ],
+  "range": {
+    "start": "2026-01-10",
+    "end": "2026-01-12"
+  }
+}
+```
+
+**Response:**
+
+```json
+{
+  "ok": true,
+  "projectId": "manual_1234567890",
+  "dateRange": {
+    "start": "2026-01-10",
+    "end": "2026-01-12"
+  },
+  "hotels": [
+    {
+      "hotelId": "ChIJ...",
+      "hotelName": "PRIME PARK Hotel Bandung",
+      "rating": 4.5,
+      "reviewsCount": 1250,
+      "prices": [
+        {
+          "date": "2026-01-10",
+          "price": 450000,
+          "method": "aria-label",
+          "error": null
+        },
+        {
+          "date": "2026-01-11",
+          "price": 520000,
+          "method": "aria-label",
+          "error": null
+        }
+      ]
+    }
+  ]
+}
+```
+
+## Features
+
+- ✅ Headless Chrome scraping
+- ✅ Anti-detection measures
+- ✅ Multiple price extraction methods
+- ✅ Rating & reviews extraction
+- ✅ Date range support
+- ✅ Error handling & logging
+
+## Tech Stack
+
+- **Flask** - Web framework
+- **Selenium** - Browser automation
+- **BeautifulSoup** - HTML parsing
+- **Chrome** - Headless browser
+
+## License
+
+MIT License
