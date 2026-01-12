@@ -21,6 +21,7 @@ from pathlib import Path
 from selenium.webdriver.chrome.service import Service
 
 # Add parent directory to path to import scraped_prices
+USD_TO_IDR_RATE = 16856.02
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 # FIFO job queue (single-process, no Redis/Celery). maxsize=1 fully prevents overlap.
@@ -501,7 +502,6 @@ def run_scrape_job(job_id: str, job: Dict[str, Any]) -> Dict[str, Any]:
                     method_used = None
 
                     # METODE 1: CSS Selector class "qQOQpe prxS3d" (harga utama di detail hotel)
-                    # METODE 1: CSS Selector class "qQOQpe prxS3d"
                     try:
                         price_elem = price_el or driver.find_element(By.CSS_SELECTOR, "span.qQOQpe.prxS3d")
                         if price_elem:
@@ -517,9 +517,15 @@ def run_scrape_job(job_id: str, job: Dict[str, Any]) -> Dict[str, Any]:
 
                             # === CASE 2: USD → KONVERSI KE IDR ===
                             elif text.startswith("US$"):
-                                usd = float(text.replace("US$", "").strip())
-                                price_found = int(usd * USD_TO_IDR_RATE)
-                                method_used = "usd-converted"
+                                usd_raw = text.replace("US$", "").strip()
+                                usd_raw = usd_raw.replace(",", "")  # buang pemisah ribuan
+                                try:
+                                    usd = float(usd_raw)
+                                    price_found = int(usd * USD_TO_IDR_RATE)
+                                    method_used = "usd-converted"
+                                except:
+                                    pass
+
 
                     except:
                         pass
