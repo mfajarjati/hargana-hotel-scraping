@@ -332,7 +332,7 @@ def run_scrape_job(job_id: str, job: Dict[str, Any]) -> Dict[str, Any]:
     # driver = webdriver.Chrome(options=chrome_options)
 
 
-    service = Service("/usr/bin/chromedriver")
+    service = Service("/usr/local/bin/chromedriver")
 
     driver = webdriver.Chrome(
         service=service,
