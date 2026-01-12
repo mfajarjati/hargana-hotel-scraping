@@ -325,6 +325,9 @@ def run_scrape_job(job_id: str, job: Dict[str, Any]) -> Dict[str, Any]:
     chrome_options.add_argument('--disable-blink-features=AutomationControlled')
     chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
     chrome_options.add_experimental_option('useAutomationExtension', False)
+    chrome_options.add_argument("--lang=id-ID")
+    chrome_options.add_argument("--disable-geolocation")
+    chrome_options.add_argument("--timezone=Asia/Jakarta")
 
     # # Prepare screenshot directory per job
     # screenshot_dir = ensure_screenshot_dir()
@@ -380,7 +383,10 @@ def run_scrape_job(job_id: str, job: Dict[str, Any]) -> Dict[str, Any]:
             # Ini penting biar muncul list hotel dan kita bisa PILIH yang benar
             try:
                 encoded_name = quote(f"{hotel_name} reviews")
-                search_url = f"https://www.google.com/travel/search?q={encoded_name}&hl=id"
+                search_url = (
+                    f"https://www.google.com/travel/search?"
+                    f"q={encoded_name}&hl=id&currency=IDR"
+                )
                 print(f"[STEP 1] Searching hotel: {search_url}")
                 driver.get(search_url)
                 wait_for_page_ready(driver, "search page")
@@ -495,18 +501,29 @@ def run_scrape_job(job_id: str, job: Dict[str, Any]) -> Dict[str, Any]:
                     method_used = None
 
                     # METODE 1: CSS Selector class "qQOQpe prxS3d" (harga utama di detail hotel)
+                    # METODE 1: CSS Selector class "qQOQpe prxS3d"
                     try:
                         price_elem = price_el or driver.find_element(By.CSS_SELECTOR, "span.qQOQpe.prxS3d")
                         if price_elem:
                             text = price_elem.text.strip()
                             print(f"[METHOD-1] qQOQpe.prxS3d: {text}")
-                            if text and 'Rp' in text:
+
+                            # === CASE 1: RUPIAH LANGSUNG ===
+                            if text.startswith("Rp"):
                                 numbers = re.findall(r'\d+', text.replace('.', '').replace(',', ''))
                                 if numbers:
                                     price_found = int(''.join(numbers))
-                                    method_used = "css-qQOQpe"
+                                    method_used = "css-rp"
+
+                            # === CASE 2: USD → KONVERSI KE IDR ===
+                            elif text.startswith("US$"):
+                                usd = float(text.replace("US$", "").strip())
+                                price_found = int(usd * USD_TO_IDR_RATE)
+                                method_used = "usd-converted"
+
                     except:
                         pass
+
 
                     # METODE 2: Button aria-label (booking platform)
                     if price_found == 0:
